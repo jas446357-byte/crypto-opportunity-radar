@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><meta name="description" content="Read-only crypto opportunity research scanner">
+<link rel="manifest" href="/web/manifest.json">
+<title>Crypto Opportunity Radar</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--line:#28364c;--text:#edf3fb;--muted:#9aabc2;--green:#76e0b5;--amber:#f5c56b;--red:#ff8c8c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,sans-serif}
+main{max-width:1100px;margin:auto;padding:20px}.top{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:clamp(1.5rem,4vw,2.2rem);margin:0}.sub,.muted{color:var(--muted)}button,input{font:inherit}button{border:0;border-radius:12px;padding:12px 16px;background:var(--green);color:#062016;font-weight:800;cursor:pointer}button:disabled{opacity:.5}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}.stat,.panel,.coin{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px}.stat strong{display:block;font-size:1.3rem;margin-top:4px}
+.warning{border:1px solid #765a25;background:#2b2418;color:#ffe2a3;padding:12px;border-radius:12px;line-height:1.45}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}.controls input{flex:1;min-width:170px;background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:10px;color:var(--text)}
+#status{color:var(--muted);font-size:.9rem}.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:12px;margin-top:12px}
+.coin h3{margin:0;font-size:1.1rem}.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.score{font-size:1.4rem;font-weight:800}.tag{font-size:.75rem;padding:5px 8px;border-radius:99px;background:#26384d;color:#dbeafe}.tag.entry{background:#173e33;color:#9bf0cd}.tag.risk{background:#4a351c;color:#ffd28a}.price{font-size:1.2rem;font-weight:750;margin:12px 0 2px}.details{font-size:.87rem;color:var(--muted);line-height:1.5}.flags{font-size:.82rem;color:#ffd28a;margin-top:10px}.breakdown{font-size:.82rem;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+footer{margin:28px 0;color:var(--muted);font-size:.85rem;line-height:1.55}
+@media(max-width:540px){main{padding:14px}.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:span 2}}
+</style>
+</head>
+<body><main>
+<div class="top"><div><h1>◉ Crypto Opportunity Radar</h1><div class="sub">Read-only market scanner · GBP · No trading</div></div><button id="scan">Scan now</button></div>
+<div class="stats"><div class="stat"><span class="muted">Market data</span><strong id="dataStatus">Not scanned</strong></div><div class="stat"><span class="muted">Assets scanned</span><strong id="count">—</strong></div><div class="stat"><span class="muted">Last scan (UTC)</span><strong id="updated" style="font-size:1rem">—</strong></div></div>
+<div class="warning"><b>High-risk research only.</b> A score is not a probability of 10× returns. Microcaps can go to zero. “Entry-setup” means rules matched, not a guaranteed buy signal. No account is connected and no orders are placed.</div>
+<div class="controls"><input id="search" placeholder="Search coin or ticker…"><select id="filter" style="background:#121d30;color:#edf3fb;border:1px solid #28364c;border-radius:10px;padding:10px"><option value="all">All signals</option><option>ENTRY-SETUP</option><option>WATCH</option><option>NO SIGNAL</option><option>INSUFFICIENT DATA</option></select><span id="status">Press Scan now to fetch live data.</span></div>
+<div id="list" class="list"></div>
+<footer>Data source: CoinGecko public API. Scenario market caps are arithmetic multiples of reported current market cap, not price predictions. This MVP scans provider-listed assets only and does not audit contracts, token unlocks, holders, or DEX liquidity. Scores and signals are experimental heuristics, not financial advice. Always verify data and liquidity independently.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id); let assets=[];
+function money(n){if(n==null||!Number.isFinite(Number(n)))return "Unavailable";return "£"+Number(n).toLocaleString("en-GB",{maximumFractionDigits:Number(n)<1?8:0})}
+function pct(n){return n==null?"Unavailable":(Number(n)>0?"+":"")+Number(n).toFixed(2)+"%"}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function card(a){let scenario=a.market_cap_scenarios_gbp||{};let flags=(a.risk_flags||[]).slice(0,4);
+return `<article class="coin"><div class="row"><div><h3>${esc(a.name)} <span class="muted">(${esc(a.symbol)})</span></h3><div class="details">Market cap: ${money(a.market_cap_gbp)}</div></div><div style="text-align:right"><div class="score">${a.score}/100</div><span class="tag ${a.signal==='ENTRY-SETUP'?'entry':''}">${esc(a.signal)}</span></div></div>
+<div class="price">${money(a.price_gbp)}</div><div class="details">24h ${pct(a.change_24h_pct)} · 7d ${pct(a.change_7d_pct)} · 30d ${pct(a.change_30d_pct)}<br>24h volume: ${money(a.volume_24h_gbp)}</div>
+<div class="breakdown"><b>Score breakdown</b><br>${Object.entries(a.score_parts||{}).map(([k,v])=>`${esc(k.replaceAll('_',' '))}: ${v}`).join(" · ")}<br><b>Market-cap scenarios (not forecasts):</b> 10× ${money(scenario["10x"])} · 20× ${money(scenario["20x"])} · 30× ${money(scenario["30x"])}</div>
+${flags.length?`<div class="flags">⚠ ${flags.map(esc).join(" · ")}</div>`:""}<div class="details" style="margin-top:8px">Updated: ${esc(a.last_updated||"provider timestamp unavailable")} · Source: ${esc(a.source)}</div></article>`}
+function render(){let q=$("search").value.toLowerCase(),f=$("filter").value;let rows=assets.filter(a=>(f==="all"||a.signal===f)&&(`${a.name} ${a.symbol}`).toLowerCase().includes(q));$("list").innerHTML=rows.map(card).join("")||'<div class="panel">No matching assets. Run a scan or change the filters.</div>'}
+async function scan(){ $("scan").disabled=true;$("status").textContent="Fetching current market data…";
+try{let r=await fetch("/api/scan",{method:"POST"});let d=await r.json();if(!r.ok)throw Error(d.detail||"Scan failed");assets=d.assets||[];$("dataStatus").textContent=d.data_status||"Unknown";$("count").textContent=d.asset_count??assets.length;$("updated").textContent=d.generated_at?new Date(d.generated_at).toLocaleString("en-GB",{timeZone:"UTC",dateStyle:"short",timeStyle:"short"}):"—";$("status").textContent="Data received; check each coin's risk flags.";render()}
+catch(e){$("status").textContent="No signals generated: "+e.message;$("dataStatus").textContent="Unavailable";$("list").innerHTML='<div class="panel">Market data could not be retrieved. Try later. The app will not fabricate fallback prices or signals.</div>'}
+finally{$("scan").disabled=false}}
+$("scan").addEventListener("click",scan);$("search").addEventListener("input",render);$("filter").addEventListener("change",render);
+fetch("/api/scan").then(r=>r.json()).then(d=>{if(d.assets?.length){assets=d.assets;$("dataStatus").textContent=d.data_status;$("count").textContent=d.asset_count;$("updated").textContent=new Date(d.generated_at).toLocaleString("en-GB",{timeZone:"UTC",dateStyle:"short",timeStyle:"short"});$("status").textContent="Showing last server scan.";render()}});
+if("serviceWorker" in navigator) navigator.serviceWorker.register("/web/sw.js").catch(()=>{});
+</script></body></html>
